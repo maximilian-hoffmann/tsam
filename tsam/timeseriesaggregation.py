@@ -141,6 +141,7 @@ def aggregatePeriods(candidates, n_clusters=8,
         clusterOrder = k_means.fit_predict(candidates)
         clusterCenters = k_means.cluster_centers_
 
+
     elif clusterMethod == 'k_medoids':
         from tsam.utils.k_medoids_exact import KMedoids
         k_medoid = KMedoids(n_clusters=n_clusters, solver=solver)
@@ -165,20 +166,44 @@ def aggregatePeriods(candidates, n_clusters=8,
             mindistIdx = np.argmin(innerDistMatrix.sum(axis=0))
             clusterCenters.append(candidates[indice][mindistIdx])
             clusterCenterIndices.append(indice[0][mindistIdx])
-            
+
     elif clusterMethod == 'k_shape':
-        from kshape.core import kshape, zscore
-        clusters = kshape(zscore(candidates, axis = 1),n_clusters)
-        clusterCenters = []
-        clusterOrder = np.zeros(len(candidates))
-        count = 0
-        for cluster in clusters:
-            clusterCenters.append(cluster[0])
-            for j in cluster[1]:
-                clusterOrder[j] = count
-            count = count + 1
-        clusterOrder = clusterOrder.astype(int)
-    
+        meanCandidates = np.mean(candidates, axis=1)
+        stdCandidates = np.std(candidates, axis=1)
+        stdCandidates[stdCandidates == 0.] = 1.
+        
+        from tslearn.clustering import KShape
+        k_shape = KShape(n_clusters=n_clusters,
+            max_iter=1000,
+            n_init=n_iter,
+            verbose=False,
+            random_state=0)
+        clusterOrder = k_shape.fit_predict(candidates)
+        clusterCentersZnormalized = k_shape.cluster_centers_[:,:,0]
+        
+#         from kshape.core import kshape, zscore
+#         clusters = kshape(zscore(candidates, axis = 1),n_clusters)
+#         clusterCentersZnormalized = []
+#         clusterOrder = np.zeros(len(candidates))
+#         count = 0
+#         for cluster in clusters:
+#             clusterCentersZnormalized.append(cluster[0])
+#             for j in cluster[1]:
+#                 clusterOrder[j] = count
+#             count = count + 1
+#         clusterOrder = clusterOrder.astype(int)        
+
+        meanListOfClusters=[]
+        stdListOfClusters=[]
+        for typicalPeriodNumber in range(n_clusters):
+            meanListOfClusterCandidates=[i for ind, i in enumerate(meanCandidates.tolist()) if clusterOrder.tolist()[ind]==typicalPeriodNumber]
+            stdListOfClusterCandidates=[i for ind, i in enumerate(stdCandidates.tolist()) if clusterOrder.tolist()[ind]==typicalPeriodNumber]
+            meanListOfClusters.append(sum(meanListOfClusterCandidates)/len(meanListOfClusterCandidates))
+            stdListOfClusters.append((sum([i**2 for i in stdListOfClusterCandidates])/len(stdListOfClusterCandidates))**0.5)
+        meanListOfClustersArray=np.asarray(meanListOfClusters)
+        stdListOfClustersArray=np.asarray(stdListOfClusters)
+        clusterCentersMinusMean=np.transpose(np.multiply(np.transpose(clusterCentersZnormalized),stdListOfClustersArray))
+        clusterCenters=np.transpose(np.add(np.transpose(clusterCentersMinusMean),meanListOfClustersArray))
 
     return clusterCenters, clusterCenterIndices, clusterOrder
 
