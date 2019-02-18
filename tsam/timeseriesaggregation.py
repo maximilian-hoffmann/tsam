@@ -198,8 +198,16 @@ def aggregatePeriods(candidates, n_clusters=8,
         for typicalPeriodNumber in range(n_clusters):
             meanListOfClusterCandidates=[i for ind, i in enumerate(meanCandidates.tolist()) if clusterOrder.tolist()[ind]==typicalPeriodNumber]
             stdListOfClusterCandidates=[i for ind, i in enumerate(stdCandidates.tolist()) if clusterOrder.tolist()[ind]==typicalPeriodNumber]
-            meanListOfClusters.append(sum(meanListOfClusterCandidates)/len(meanListOfClusterCandidates))
-            stdListOfClusters.append((sum([i**2 for i in stdListOfClusterCandidates])/len(stdListOfClusterCandidates))**0.5)
+            meanListOfClusterCandidatesLength=len(meanListOfClusterCandidates)
+            if meanListOfClusterCandidatesLength == 0:
+                meanListOfClusterCandidatesLength = 1
+                raise ValueError('Some cluster centers are empty. Please try another number of typical periods.')
+            stdListOfClusterCandidatesLength=len(stdListOfClusterCandidates)
+            if stdListOfClusterCandidatesLength == 0:
+                stdListOfClusterCandidatesLength = 1
+                raise ValueError('Some cluster centers are empty. Please try another number of typical periods.')
+            meanListOfClusters.append(sum(meanListOfClusterCandidates)/meanListOfClusterCandidatesLength)
+            stdListOfClusters.append((sum([i**2 for i in stdListOfClusterCandidates])/stdListOfClusterCandidatesLength)**0.5)
         meanListOfClustersArray=np.asarray(meanListOfClusters)
         stdListOfClustersArray=np.asarray(stdListOfClusters)
         clusterCentersMinusMean=np.transpose(np.multiply(np.transpose(clusterCentersZnormalized),stdListOfClustersArray))
